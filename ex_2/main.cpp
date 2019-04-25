@@ -1,6 +1,6 @@
 /*
     Simple SFML project.
-    Modification of example 1 with 
+    Modification of example 1 with illustrations of smart pointer
 */
 
 #include <SFML/Graphics.hpp>
@@ -79,7 +79,8 @@ int main() {
     std::shared_ptr<sf::Shape> player(shapes[0]);
     {
         sf::RectangleShape* shape = static_cast<sf::RectangleShape*>(player.get());
-        unsigned int x = shape->getSize().x/2, y = shape->getSize().y/2;
+        unsigned int x = static_cast<unsigned int>(shape->getSize().x/2), 
+                     y = static_cast<unsigned int>(shape->getSize().y/2);
         player->setPosition(x, y);
         player->setPosition(rand() % (vmode.width - x * 2) + x, rand() % (vmode.height - y * 2) + y);
     }
