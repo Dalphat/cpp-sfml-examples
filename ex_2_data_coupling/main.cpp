@@ -1,10 +1,12 @@
 /*
     Simple SFML project.
-    Modification of example 1 with illustrations of smart pointer
+    Modification of example 1 with illustrations of generic container of different objects.
+
 */
 
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include <vector>
 #include <iomanip>
 #include <thread>       //Sleep to save processing time.
 #include <unordered_map>//Unordered map: holds a key pair that can be accessed with 
@@ -21,8 +23,6 @@ namespace my {
         sf::Vector2<float> velocity;
     public:
         RectangleShape(sf::Vector2<float>& size): sf::RectangleShape(size){}
-        RectangleShape(sf::Vector2<float> &size, sf::Vector2<float> &velocity) :
-            sf::RectangleShape{ size }, velocity(velocity) {}
         void setVelocity(float x, float y) {
             this->velocity.x = x;
             this->velocity.y = y;
@@ -41,6 +41,31 @@ namespace my {
         }
         sf::Vector2<float> getPoint(std::size_t index) const override {
             return sf::RectangleShape::getPoint(index);
+        }
+    };
+    class CircleShape : public sf::CircleShape {
+    private:
+        sf::Vector2<float> velocity;
+    public:
+        CircleShape(float radius = 0, std::size_t pointCount = 30): sf::CircleShape(radius,pointCount){}
+        void setVelocity(float x, float y) {
+            this->velocity.x = x;
+            this->velocity.y = y;
+        }
+        void setVelocity(sf::Vector2<float> velocity) {
+            this->velocity.x = velocity.x;
+            this->velocity.y = velocity.y;
+        }
+        const sf::Vector2<float>& getVelocity() const {
+            return velocity;
+        }
+
+        //Required overrides from pure virtual functions from Rectanlge Shape
+        std::size_t getPointCount() const override {
+            return sf::CircleShape::getPointCount();
+        }
+        sf::Vector2<float> getPoint(std::size_t index) const override {
+            return sf::CircleShape::getPoint(index);
         }
     };
 }
@@ -67,42 +92,65 @@ int main() {
 
     sf::Vector2<float> size{ 50,50 }, velocity{ 100,100 };
 
-    //Declare our shape to be illustrated in our program.
-    std::vector<std::shared_ptr<sf::Shape>> shapes{
-        std::make_shared<my::RectangleShape>(size,velocity),
-        std::make_shared<my::RectangleShape>(size,velocity),
-        std::make_shared<my::RectangleShape>(size,velocity),
-        std::make_shared<my::RectangleShape>(size,velocity),
-        std::make_shared<my::RectangleShape>(size,velocity)
+    //Container for each type of our rectangle shapes: Smart pointers
+    std::vector<std::shared_ptr<my::RectangleShape>> rectangles{
+        std::make_shared<my::RectangleShape>(size),
+        std::make_shared<my::RectangleShape>(size),
+        std::make_shared<my::RectangleShape>(size)
     };
 
-    std::shared_ptr<sf::Shape> player(shapes[0]);
-    {
-        sf::RectangleShape* shape = static_cast<sf::RectangleShape*>(player.get());
-        unsigned int x = static_cast<unsigned int>(shape->getSize().x/2), 
-                     y = static_cast<unsigned int>(shape->getSize().y/2);
-        player->setPosition(x, y);
-        player->setPosition(rand() % (vmode.width - x * 2) + x, rand() % (vmode.height - y * 2) + y);
-    }
-    for (int i = 1; i < shapes.size(); ++i) {
-        shapes[i]->setFillColor(sf::Color::Red);
-        sf::RectangleShape* shape = static_cast<sf::RectangleShape*>(shapes[i].get());
-        unsigned int x = static_cast<unsigned int>(shape->getSize().x/2), 
-                     y = static_cast<unsigned int>(shape->getSize().y/2);
-        shapes[i]->setOrigin(x, y);
-        shapes[i]->setPosition((rand() % (vmode.width - x * 2)) + x, (rand() % (vmode.height - y * 2)) + y);
-    }
-    player->setFillColor(sf::Color::Green);//Set shape color to green.
-    player->setOrigin(50,50);//Set shape origin to center for demonstrating rotation.
+    //Container for each type of our circle shapes: Smart pointers
+    std::vector<std::shared_ptr<my::CircleShape>> circles{
+        std::make_shared<my::CircleShape>(size.x/2),
+        std::make_shared<my::CircleShape>(size.x/2),
+        std::make_shared<my::CircleShape>(size.x/2)
+    };
 
+    //Container for all of our shapes to be drawn in our program.
+    std::vector<std::shared_ptr<sf::Shape>> shapes;
+    shapes.reserve(20);//Reserve up to 50 units; more than enough space.
+
+    //Add the all of the shapes to our universal container.
+    shapes.insert(shapes.begin(), rectangles.begin(), rectangles.end());
+    shapes.insert(shapes.begin() + rectangles.size(), circles.begin(), circles.end());
+
+    //Initialize Enemies: Red Rectangles
+    for (auto rectangle : rectangles) {
+        rectangle->setVelocity(velocity);
+        rectangle->setFillColor(sf::Color::Red);
+        float x = rectangle->getSize().x / 2, 
+              y = rectangle->getSize().y / 2;
+        rectangle->setOrigin(x,y);
+        rectangle->setPosition(rand() % (vmode.width - (int)x * 2) + x, 
+            rand() % (vmode.height - (int)y * 2) + y);
+    }
+
+    //Initialize Player: One green Rectangle
+    auto player(rectangles[0]);
+    player->setFillColor(sf::Color::Green);
+
+    //Initialize Neutrals: Yellow Circles
+    for (auto circle : circles) {
+        circle->setVelocity(velocity);
+        circle->setFillColor(sf::Color::Yellow);
+        float r = circle->getRadius();
+        circle->setOrigin(r, r);
+        circle->setPosition((rand() % (vmode.width - (int)r * 2)) + r, 
+            (rand() % (vmode.height - (int)r * 2)) + r);
+    }
+
+    //Initialize our timers for occurance of printing, updating, drawing, and sleeping.
+    //Argument is a float value representing milliseconds per second.
     std::pair<float, float> print{ 0.f, 1.f },
                             update{ 0.f, 1 / 120.f },
                             draw{ 0.f, 1 / 60.f },
                             sleep{ 0.f, 1 / 240.f };
 
-    std::cout << std::fixed;//Set console output to be fixed and right aligned.
+    //Set console output to be fixed and right aligned.
+    std::cout << std::fixed;
 
-    size_t frames = 0;//Frames count per second.
+    //Frame counter per second.
+    size_t frames = 0;
 
     //Game Loop, runs while window is open.
     while (window.isOpen()) {
@@ -149,22 +197,21 @@ int main() {
             //Evaluate button states
             for (auto pair : input)
                 if (pair.second) {
-                    my::RectangleShape* rs = static_cast<my::RectangleShape*>(player.get());
                     switch (pair.first) {
                     case sf::Keyboard::Up:
-                        player->move(0, -rs->getVelocity().y * update.first);//move by a rate of vel mul delta
+                        player->move(0, -player->getVelocity().y * update.first);//move by a rate of vel mul delta
                         break;
                     case sf::Keyboard::Down:
-                        player->move(0, rs->getVelocity().y * update.first);
+                        player->move(0, player->getVelocity().y * update.first);
                         break;
                     case sf::Keyboard::Left:
-                        player->move(-rs->getVelocity().y * update.first, 0);
+                        player->move(-player->getVelocity().y * update.first, 0);
                         break;
                     case sf::Keyboard::Right:
-                        player->move(rs->getVelocity().y * update.first, 0);
+                        player->move(player->getVelocity().y * update.first, 0);
                         break;
                     case sf::Keyboard::Space:
-                        player->rotate(10.f * update.first);
+                        player->rotate(100.f * update.first);
                         break;
                     }
                 }
