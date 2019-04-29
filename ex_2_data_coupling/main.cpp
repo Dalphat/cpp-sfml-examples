@@ -143,8 +143,7 @@ int main() {
     //Argument is a float value representing milliseconds per second.
     std::pair<float, float> print{ 0.f, 1.f },
                             update{ 0.f, 1 / 120.f },
-                            draw{ 0.f, 1 / 60.f },
-                            sleep{ 0.f, 1 / 240.f };
+                            draw{ 0.f, 1 / 60.f };
 
     //Set console output to be fixed and right aligned.
     std::cout << std::fixed;
@@ -167,6 +166,10 @@ int main() {
                 << std::right << std::setw(5) << frames << '\n';
             print.first -= print.second;//decrement timer by 1 second. Set to zero if no catchup.
             frames = 0;
+            for (auto shape : shapes)
+                if (player->getGlobalBounds().intersects(shape->getGlobalBounds()) && player != shape) {
+                    std::cout << "Collide\n";
+                }
         }
 
         //Declare an event variable.
@@ -229,12 +232,7 @@ int main() {
             ++frames;
         }
 
-        sleep.first += delta;
-        if (sleep.first > sleep.second) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
-            //sps is 1000/240 = ~4ms, this will sleep the thread for 2ms.
-            sleep.first -= sleep.second;//Set to zero if no catchup.
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000/240));
     }
     return 0;
 }
